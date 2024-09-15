@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ZLSSettings">
+    <option name="zlsPath" value="C:\zls-windows-x86_64-0.13.0\zls.exe" />
+    <option name="buildOnSave" value="true" />
+  </component>
+  <component name="ZigProjectSettings">
+    <option name="toolchainHomeDirectory" value="$PROJECT_DIR$/../../../../../../ProgramData/chocolatey/bin" />
+  </component>
+</project>
