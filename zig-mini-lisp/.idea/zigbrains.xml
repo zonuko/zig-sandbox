@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ZLSSettings">
-    <option name="zlsPath" value="C:\zls-windows-x86_64-0.13.0\zls.exe" />
-    <option name="buildOnSave" value="true" />
+    <option name="zlsPath" value="/opt/homebrew/bin/zls" />
   </component>
   <component name="ZigProjectSettings">
-    <option name="toolchainHomeDirectory" value="$PROJECT_DIR$/../../../../../../ProgramData/chocolatey/bin" />
+    <option name="explicitPathToStd" value="/opt/homebrew/Cellar/zig/0.14.0_1/lib/zig/std" />
+    <option name="toolchainPath" value="/opt/homebrew/bin" />
   </component>
 </project>
