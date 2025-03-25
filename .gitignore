@@ -2,3 +2,5 @@ zig-mini-lisp/.zig-cache/
 zig-mini-lisp/zig-out/
 .DS_store
 zig-mini-lisp/.idea/zigbrains.xml
+zig-mini-lisp/Zig.iml
+zig-mini-lisp/.idea/libraries/Zig-SDK.xml
