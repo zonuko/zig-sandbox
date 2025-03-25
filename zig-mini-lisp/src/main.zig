@@ -9,10 +9,20 @@ const BUFSIZE = 256;
 const NIL = 0;
 const T = 4;
 
-// Reader interface for abstracting input
+/// Reader interface for abstracting input sources.
+/// This interface allows the Lisp interpreter to read input from different sources
+/// (e.g., stdin, string buffers for testing) using a common interface.
 pub const Reader = struct {
     readByteFn: *const fn (self: *const Reader) anyerror!u8,
 
+    /// Reads a single byte from the input source.
+    /// This method delegates to the implementation-specific readByteFn.
+    ///
+    /// Args:
+    ///     self: Pointer to the Reader instance.
+    ///
+    /// Returns:
+    ///     The next byte from the input source, or an error if reading fails.
     pub fn readByte(self: *const Reader) anyerror!u8 {
         return self.readByteFn(self);
     }
@@ -21,16 +31,29 @@ pub const Reader = struct {
 // Global reader that can be set to either stdin or a test reader
 var current_reader: ?*const Reader = null;
 
-// Standard input reader implementation
+/// Standard input reader implementation.
+/// This struct provides a way to read input from the standard input (stdin).
 const StdinReader = struct {
     reader: Reader,
 
+    /// Creates a new StdinReader.
+    ///
+    /// Returns:
+    ///     A new StdinReader instance configured to read from stdin.
     fn init() StdinReader {
         return StdinReader{
             .reader = Reader{ .readByteFn = readByte },
         };
     }
 
+    /// Reads a single byte from standard input.
+    /// This function is called by the Reader interface.
+    ///
+    /// Args:
+    ///     reader: Unused Reader pointer (required by the interface).
+    ///
+    /// Returns:
+    ///     The next byte from standard input, or an error if reading fails.
     fn readByte(reader: *const Reader) anyerror!u8 {
         _ = reader;
         return std.io.getStdIn().reader().readByte();
@@ -40,17 +63,23 @@ const StdinReader = struct {
 // Global stdin reader instance
 var stdin_reader = StdinReader.init();
 
-// Function to set the current reader
+/// Sets the current reader to be used for input.
+/// This allows switching between different input sources (e.g., stdin or test input).
+///
+/// Args:
+///     reader: Pointer to the Reader implementation to use for input.
 pub fn setReader(reader: *const Reader) void {
     current_reader = reader;
 }
 
-// Function to reset the reader to stdin
+/// Resets the current reader to the standard input (stdin).
+/// This is useful after using a test reader or other custom input source.
 pub fn resetReader() void {
     current_reader = &stdin_reader.reader;
 }
 
-// Initialize the reader to stdin by default
+/// Initializes the reader system to use standard input (stdin) by default.
+/// This should be called at the start of the program to ensure input is properly set up.
 pub fn initReader() void {
     resetReader();
 }
@@ -105,20 +134,57 @@ var sp: i32 = undefined;
 var fc: i32 = undefined;
 var ap: i32 = undefined;
 
+/// Returns the 'car' value (first element) of a cons cell at the specified address.
+/// In Lisp, 'car' refers to the first element of a cons cell pair.
+///
+/// Args:
+///     addr: The memory address (index) of the cell in the heap.
+///
+/// Returns:
+///     The 'car' value stored in the cell.
 fn getCar(comptime addr: comptime_int) i32 {
     return head[addr].car;
 }
 
+/// Returns the 'cdr' value (second element) of a cons cell at the specified address.
+/// In Lisp, 'cdr' refers to the second element of a cons cell pair, often used for list tails.
+///
+/// Args:
+///     addr: The memory address (index) of the cell in the heap.
+///
+/// Returns:
+///     The 'cdr' value stored in the cell.
 fn getCdr(comptime addr: comptime_int) i32 {
     return head[addr].cdr;
 }
 
+/// Creates a symbol with the given name.
+/// This is a placeholder implementation that always returns 0.
+///
+/// Args:
+///     _: The name of the symbol to create (currently unused).
+///
+/// Returns:
+///     The address of the newly created symbol (currently always 0).
 fn makeSym(_: []const u8) i32 {
     return 0;
 }
 
+/// Associates a symbol with a value in the symbol table.
+/// This is a placeholder implementation that does nothing.
+///
+/// Args:
+///     _: The symbol to associate (currently unused).
+///     _: The value to associate with the symbol (currently unused).
 fn assocSym(_: i32, _: i32) void {}
 
+/// Initializes the memory cells and global variables for the Lisp interpreter.
+/// This sets up the free list, environment pointer, and other global state.
+///
+/// The function:
+/// 1. Marks all cells as free and links them in a free list
+/// 2. Sets up the initial environment with 'nil' and 't' symbols
+/// 3. Initializes stack and argument pointers
 fn initCell() void {
     for (0..HEAPSIZE) |addr| {
         head[addr].flag = .FRE;
@@ -137,6 +203,18 @@ fn initCell() void {
     ap = 0;
 }
 
+/// Reads the next token from the input stream and updates the global token state.
+/// This is the main lexical analyzer for the Lisp interpreter.
+///
+/// The function handles:
+/// - Parentheses: '(' and ')'
+/// - Special characters: quote (') and dot (.)
+/// - Numbers: sequences of digits with optional sign
+/// - Symbols: alphanumeric sequences and special characters
+/// - Whitespace: spaces, tabs, and newlines (skipped)
+///
+/// Returns:
+///     An error if reading from the input stream fails.
 fn getToken() !void {
     // Use the current reader or fall back to stdin
     if (current_reader == null) {
@@ -202,6 +280,14 @@ fn getToken() !void {
     };
 }
 
+/// Determines if a token buffer contains a valid number.
+/// A valid number is a sequence of digits with an optional '+' or '-' sign at the beginning.
+///
+/// Args:
+///     buf: The token buffer to check.
+///
+/// Returns:
+///     true if the buffer contains a valid number, false otherwise.
 pub fn numberToken(buf: [BUFSIZE]u8) bool {
     if (buf.len == 0) return false;
 
@@ -221,6 +307,15 @@ pub fn numberToken(buf: [BUFSIZE]u8) bool {
     return true;
 }
 
+/// Determines if a token buffer contains a valid symbol.
+/// A valid symbol starts with a non-digit character and contains only
+/// alphabetic characters, digits, and special symbol characters.
+///
+/// Args:
+///     buf: The token buffer to check.
+///
+/// Returns:
+///     true if the buffer contains a valid symbol, false otherwise.
 pub fn symbolToken(buf: [BUFSIZE]u8) bool {
     if (buf.len == 0) return false;
     if (std.ascii.isDigit((buf[0]))) return false;
@@ -233,6 +328,15 @@ pub fn symbolToken(buf: [BUFSIZE]u8) bool {
     return true;
 }
 
+/// Determines if a character is a valid special character for symbols.
+/// Special characters include mathematical operators and other common
+/// characters used in Lisp symbol names.
+///
+/// Args:
+///     c: The character to check.
+///
+/// Returns:
+///     true if the character is a valid special character for symbols, false otherwise.
 pub fn isSymch(c: u8) bool {
     return switch (c) {
         '+', '-', '*', '/', '<', '>', '=', '!', '?' => true,
@@ -240,6 +344,14 @@ pub fn isSymch(c: u8) bool {
     };
 }
 
+/// The main entry point for the Lisp interpreter.
+/// Initializes the reader and prints some sample output.
+///
+/// This is currently a placeholder implementation that demonstrates
+/// basic I/O operations in Zig.
+///
+/// Returns:
+///     An error if any I/O operations fail.
 pub fn main() !void {
     // Initialize the reader
     initReader();
@@ -643,12 +755,21 @@ fn makeSymbolBuf(input: []const u8) [BUFSIZE]u8 {
     return buf;
 }
 
-// Test reader implementation for testing getToken
+/// Test reader implementation for testing the tokenizer and parser.
+/// This struct provides a way to feed predefined input strings to the Lisp interpreter
+/// for testing purposes.
 pub const TestReader = struct {
     reader: Reader,
     input: []const u8,
     position: usize,
 
+    /// Creates a new TestReader with the given input string.
+    ///
+    /// Args:
+    ///     input: The string to use as input for testing.
+    ///
+    /// Returns:
+    ///     A pointer to the newly created TestReader.
     pub fn init(input: []const u8) *TestReader {
         const test_reader = allocTestReader();
         test_reader.* = TestReader{
@@ -659,6 +780,15 @@ pub const TestReader = struct {
         return test_reader;
     }
 
+    /// Reads a single byte from the test input string.
+    /// This function is called by the Reader interface.
+    ///
+    /// Args:
+    ///     _: Unused Reader pointer (required by the interface).
+    ///
+    /// Returns:
+    ///     The next byte from the input string, or an error if at the end of input
+    ///     or if no test reader is set.
     fn readByte(_: *const Reader) anyerror!u8 {
         // Use a global variable to access the current test reader
         if (current_test_reader) |test_reader| {
@@ -678,13 +808,22 @@ pub const TestReader = struct {
 // Global variable to store the current test reader
 var current_test_reader: ?*TestReader = null;
 
-// Allocate memory for a test reader
+/// Allocates memory for a test reader instance.
+/// This function uses the page allocator to create a new TestReader.
+///
+/// Returns:
+///     A pointer to the newly allocated TestReader.
 fn allocTestReader() *TestReader {
     const test_reader = @as(*TestReader, @ptrCast(@alignCast(std.heap.page_allocator.alloc(u8, @sizeOf(TestReader)) catch unreachable)));
     return test_reader;
 }
 
-// Set the current test reader
+/// Sets the current test reader for input during testing.
+/// This function updates both the global test reader reference and
+/// sets it as the current reader for input operations.
+///
+/// Args:
+///     test_reader: Pointer to the TestReader to use for input.
 pub fn setTestReader(test_reader: *TestReader) void {
     current_test_reader = test_reader;
     setReader(&test_reader.reader);
