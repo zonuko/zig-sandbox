@@ -1,3 +1,4 @@
 zig-mini-lisp/.zig-cache/
 zig-mini-lisp/zig-out/
 .DS_store
+zig-mini-lisp/zigbrains.xml
