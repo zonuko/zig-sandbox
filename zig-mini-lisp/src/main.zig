@@ -345,30 +345,84 @@ pub fn isSymch(c: u8) bool {
 }
 
 /// The main entry point for the Lisp interpreter.
-/// Initializes the reader and prints some sample output.
+/// Initializes the reader and memory cells, then runs a simple REPL
+/// that tokenizes input and prints the tokens.
 ///
-/// This is currently a placeholder implementation that demonstrates
-/// basic I/O operations in Zig.
+/// This demonstrates the current functionality of the tokenizer.
 ///
 /// Returns:
 ///     An error if any I/O operations fail.
 pub fn main() !void {
-    // Initialize the reader
+    // Initialize the reader and memory cells
     initReader();
+    initCell();
 
-    // Prints to stderr (it's a shortcut based on `std.io.getStdErr()`)
-    std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
-
-    // stdout is for the actual output of your application, for example if you
-    // are implementing gzip, then only the compressed bytes should be sent to
-    // stdout, not any debugging messages.
+    // Set up stdout for printing
     const stdout_file = std.io.getStdOut().writer();
     var bw = std.io.bufferedWriter(stdout_file);
     const stdout = bw.writer();
 
-    try stdout.print("Run `zig build test` to run the tests.\n", .{});
+    // Print welcome message
+    try stdout.print("Zig Mini Lisp - Tokenizer Demo\n", .{});
+    try stdout.print("Enter Lisp expressions (Ctrl+C to exit):\n", .{});
+    try bw.flush();
 
-    try bw.flush(); // don't forget to flush!
+    // Simple REPL loop
+    while (true) {
+        // Print prompt
+        try stdout.print("> ", .{});
+        try bw.flush();
+
+        // Reset token state
+        stok.ch = 0;
+        stok.flag = .GO;
+
+        // Read and print tokens until end of input or error
+        var token_count: usize = 0;
+        while (true) {
+            getToken() catch |err| {
+                if (err == error.EndOfStream) {
+                    // End of input, break the loop
+                    break;
+                } else {
+                    // Print error and continue
+                    try stdout.print("\nError reading token: {}\n", .{err});
+                    try bw.flush();
+                    break;
+                }
+            };
+
+            // Print token information
+            try stdout.print("Token {d}: Type=", .{token_count});
+
+            switch (stok.type) {
+                .LPAREN => try stdout.print("LPAREN '('\n", .{}),
+                .RPAREN => try stdout.print("RPAREN ')'\n", .{}),
+                .QUOTE => try stdout.print("QUOTE '''\n", .{}),
+                .DOT => try stdout.print("DOT '.'\n", .{}),
+                .NUMBER => {
+                    const num_str = std.mem.sliceTo(&stok.buf, 0);
+                    try stdout.print("NUMBER '{s}'\n", .{num_str});
+                },
+                .SYMBOL => {
+                    const sym_str = std.mem.sliceTo(&stok.buf, 0);
+                    try stdout.print("SYMBOL '{s}'\n", .{sym_str});
+                },
+                .OTHER => try stdout.print("OTHER\n", .{}),
+            }
+            try bw.flush();
+
+            token_count += 1;
+
+            // If we've reached the end of input, break
+            if (stok.ch == 0) {
+                break;
+            }
+        }
+
+        try stdout.print("\nTokenized {d} tokens\n\n", .{token_count});
+        try bw.flush();
+    }
 }
 
 
